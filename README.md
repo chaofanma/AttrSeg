@@ -1,3 +1,48 @@
+---
+dataset_info:
+  features:
+  - name: image
+    dtype: image
+  - name: mask
+    dtype: image
+  - name: category
+    dtype: string
+  - name: attributes
+    sequence: string
+task_categories:
+- image-segmentation
+- zero-shot-image-classification
+- object-detection
+- image-classification
+- image-to-text
+- feature-extraction
+- other
+tags:
+- computer-vision
+- semantic-segmentation
+- open-vocabulary
+- open-vocabulary-segmentation
+- zero-shot
+- zero-shot-learning
+- attribute-based
+- vision-language
+- multimodal
+- benchmark
+- evaluation
+- neologism
+- rare-objects
+- fantasy
+- magical-creatures
+- neurips-2023
+- attrseg
+language:
+- en
+pretty_name: Fantastic Beasts Dataset
+size_categories:
+- n<1K
+license: mit
+---
+
 # Fantastic Beasts Datasets: Benchmark in *AttrSeg: Open-Vocabulary Semantic Segmentation via Attribute Decomposition-Aggregation*
 
 [![Hugging Face Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-blue)](https://huggingface.co/datasets/chaofanma/Fantastic-Beasts)
@@ -29,99 +74,43 @@ For more details, please refer to the [paper](https://arxiv.org/pdf/2309.00096).
 
 ## How to Use This Dataset
 
-### Method 1: Using Hugging Face Datasets
-
-**Load directly from Hugging Face Hub (with embedded images in Parquet format):**
+### Using Hugging Face Datasets
 
 ```python
-from datasets import load_dataset
+from datasets import load_dataset, Image
 
+# Option 1: Load from Hugging Face Hub
 dataset = load_dataset("chaofanma/Fantastic-Beasts", split='test')
 
+# Option 2: Load from local Parquet file
+# dataset = load_dataset('parquet', data_files={'test': 'data/test-00000-of-00001.parquet'}, split='test')
+
+# Use the dataset
 sample = dataset[0]
-sample['image'].show()  # PIL Image, ready to use
-print(sample['category'])  # "Augurey"
+image = sample['image']          # PIL Image (embedded in Parquet)
+mask = sample['mask']            # PIL Image (embedded in Parquet)
+category = sample['category']    # str: "Augurey"
+attributes = sample['attributes'] # list of str
 ```
 
-🤗 **[View full dataset on Hugging Face](https://huggingface.co/datasets/chaofanma/Fantastic-Beasts)**
+**Note:** 
+- This dataset uses **Parquet format** with embedded images (recommended by Hugging Face)
+- Images are stored as binary data within the Parquet file (79.8 MB)
+- The file `test-00000-of-00001.parquet` is automatically recognized as the `test` split
+- No manual configuration needed for the Dataset Viewer
+- Contains 251 samples designed for evaluation and benchmarking
 
-The Hugging Face version uses Parquet format with embedded images for optimal performance and easy loading.
+### Alternative: PyTorch Dataset & Raw Images
 
+This Hugging Face repository contains the dataset in **Parquet/Arrow format** for easy loading. 
 
+For alternative formats and implementations, please visit the **[GitHub Repository](https://github.com/chaofanma/AttrSeg)** which includes:
+- Custom PyTorch Dataset class (`examples/fantastic_beasts_dataset.py`)
+- Source images and masks in original quality (organized by category)
+- JSONL metadata files
+- Additional example scripts
 
-### Method 2: Using PyTorch Dataset (From Source Files)
-
-If you prefer direct file access or need more control, you can use the custom PyTorch Dataset class:
-
-```python
-import json
-from pathlib import Path
-import numpy as np
-from PIL import Image
-from torch.utils.data import Dataset
-
-class FantasticBeastsDataset(Dataset):
-    def __init__(self, img_root, msk_root, attr_json, transform=None):
-        self.img_root = img_root
-        self.msk_root = msk_root
-        with open(attr_json, 'r') as f:
-            self.attr = json.load(f)
-        self.transform = transform
-        self.categories = ['Augurey', 'Billywig', 'Chupacabra', 'Diricawl', 'Doxy', 
-                          'Erumpent', 'Fwooper', 'Graphorn', 'Grindylow', 'Kappa', 
-                          'Leucrotta', 'Matagot', 'Mooncalf', 'Murtlap', 'Nundu', 
-                          'Occamy', 'Runespoor', 'Swoopingevil', 'Thunderbird', 'Zouwu']
-        self.img_pathes = self.get_pathes(self.img_root)
-        self.msk_pathes = self.get_pathes(self.msk_root)
-
-    def get_pathes(self, root):
-        img_pathes = []
-        for category in self.categories:
-            category_path = Path(root) / category
-            for img_file in category_path.glob("*"):
-                img_pathes.append(img_file.resolve().as_posix())
-        img_pathes.sort()
-        return img_pathes
-
-    def read_img(self, img_path):
-        img = np.array(Image.open(img_path))  # uint8 (h, w, 3)
-        return img
-    
-    def read_msk(self, msk_path):
-        msk = np.array(Image.open(msk_path))  # uint8 (h, w)
-        msk[msk > 0] = 1
-        return msk
-
-    def read_attr(self, category):
-        return self.attr[category]
-
-    def __len__(self):
-        return len(self.img_pathes)
-
-    def __getitem__(self, index):
-        img_path = self.img_pathes[index]
-        msk_path = self.msk_pathes[index]
-        img = self.read_img(img_path)
-        msk = self.read_msk(msk_path)
-        attr = self.read_attr(Path(img_path).name.split('_')[0])
-        
-        if self.transform:
-            img, msk = self.transform(img, msk)
-        
-        return img, msk, attr
-
-# Usage
-dataset = FantasticBeastsDataset(
-    img_root="./images",
-    msk_root="./masks",
-    attr_json="./attributes.json"
-)
-
-for img, msk, attr in dataset:
-    print(img.shape, msk.shape, len(attr))
-```
-
-**Full implementation**: See [`examples/fantastic_beasts_dataset.py`](examples/fantastic_beasts_dataset.py)
+The `examples/` folder in this repo provides a reference implementation for those who need it.
 
 
 
@@ -132,19 +121,20 @@ There are 20 categories in Fantastic Beasts dataset, listed as below in alphabet
 ```
 Augurey, Billywig, Chupacabra, Diricawl, Doxy, Erumpent, Fwooper, Graphorn, Grindylow, Kappa, Leucrotta, Matagot, Mooncalf, Murtlap, Nundu, Occamy, Runespoor, Swoopingevil, Thunderbird, Zouwu
 ```
-The class names and their corresponding attributes are stored in `attributes.json`.
 
 ### Dataset Files
-- **images/**: 251 images organized by category (20 subdirectories)
-- **masks/**: 251 corresponding binary segmentation masks (PNG format)
-- **attributes.json**: Maps each category to its attribute descriptions
-- **examples/fantastic_beasts_dataset.py**: PyTorch Dataset implementation
 
+**On Hugging Face Hub:**
+- **data/test-00000-of-00001.parquet**: Parquet file with embedded images (79.8 MB, contains all 251 samples)
+  - Images and masks stored as binary data (Apache Arrow format)
+  - Automatically recognized as `test` split
+  - Optimized for streaming and fast loading
 
+**For source images and additional formats (JSONL, PyTorch Dataset), see [GitHub](https://github.com/chaofanma/AttrSeg)**
 
 ### Data Fields
-- `image`: PIL Image of the magical creature (RGB mode)
-- `mask`: PIL Image of binary segmentation mask (L mode, grayscale; 0 for background, 255 for object)
+- `image`: PIL Image of the magical creature (embedded binary data in Parquet)
+- `mask`: PIL Image of binary segmentation mask (embedded binary data in Parquet; 0 for background, 255 for object)
 - `category`: Category name (one of 20 magical creature types)
 - `attributes`: List of textual attribute descriptions for the category
 
